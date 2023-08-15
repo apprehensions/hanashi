@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+
 	"flag"
 	"fmt"
 	"os"
@@ -39,6 +40,10 @@ func main() {
 	mainFlex.AddItem(guildTree, 0, 1, false)
 
 	state.AddHandler(state.onReady)
+	state.AddHandler(state.onMessageCreate)
+	state.AddHandler(state.onGuildCreate)
+	state.AddHandler(state.onGuildDelete)
+	state.AddHandler(state.onGuildUpdate)
 
 	state.SetRoot(mainFlex, true)
 	state.EnableMouse(true)

@@ -1,33 +1,44 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/diamondburned/arikawa/v3/discord"
 	"github.com/diamondburned/arikawa/v3/gateway"
+	"github.com/diamondburned/ningen/v3"
 	"github.com/rivo/tview"
 )
 
+var allowedChannelTypes = []discord.ChannelType{
+	discord.GuildText,
+}
+
 func (s *State) addGuilds(folders []gateway.GuildFolder) {
 	for _, folder := range folders {
-		if len(folder.GuildIDs) <= 1 {
-			s.addGuild(s.guildNode, folder.GuildIDs[0])
-		} else {
+		if len(folder.GuildIDs) >= 1 {
 			s.addGuildFolder(folder)
+			continue
+		}
+
+		guild, err := s.Cabinet.Guild(folder.GuildIDs[0])
+		if err == nil {
+			s.addGuild(s.guildNode, guild)
 		}
 	}
 }
 
-func (s *State) formatGuild(guildID discord.GuildID) string {
-	if guild, err := s.Cabinet.Guild(guildID); err == nil {
-		return guild.Name
+func (s *State) addGuild(n *tview.TreeNode, g *discord.Guild) {
+	name := g.Name
+	u := s.GuildIsUnread(g.ID, allowedChannelTypes)
+
+	if u == ningen.ChannelMentioned {
+		name = fmt.Sprintf("[red::rb]%s[-:-:-]\n", name)
+	} else if u == ningen.ChannelUnread {
+		name = fmt.Sprintf("[::b]%s[::-]\n", name)
 	}
 
-	return guildID.String()
-}
-
-func (s *State) addGuild(n *tview.TreeNode, guildID discord.GuildID) {
-	name := s.formatGuild(guildID)
 	node := tview.NewTreeNode(name)
-	node.SetReference(guildID)
+	node.SetReference(g.ID)
 	n.AddChild(node)
 }
 
@@ -42,7 +53,11 @@ func (s *State) addGuildFolder(folder gateway.GuildFolder) {
 	s.guildNode.AddChild(node)
 
 	for _, guildID := range folder.GuildIDs {
-		s.addGuild(node, guildID)
+		guild, err := s.Cabinet.Guild(guildID)
+		if err != nil {
+			continue
+		}
+		s.addGuild(node, guild)
 	}
 
 	node.CollapseAll()
